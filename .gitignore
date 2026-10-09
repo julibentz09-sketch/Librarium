@@ -1,0 +1,10 @@
+target/
+librarium.db
+librarium-cert.p12
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+nbproject/private/

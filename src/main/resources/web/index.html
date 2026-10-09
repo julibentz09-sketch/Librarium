@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1E293B">
+  <meta name="description" content="Librarium: literatura paraguaya interactiva con galería digital y realidad aumentada.">
+  <title>Librarium</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231E293B'/%3E%3Cpath d='M18 14h8v30h20v6H18z' fill='%2310B981'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="encabezado">
+    <a href="#/" class="marca">
+      <h1>LIBRARIUM</h1>
+      <p>Literatura Paraguaya Interactiva</p>
+    </a>
+  </header>
+
+  <main id="app">
+    <section id="vista-inicio" class="vista" hidden>
+      <div class="inicio-grilla">
+        <section class="panel galeria" aria-labelledby="titulo-galeria">
+          <h2 id="titulo-galeria" class="titulo-seccion">Galería Digital</h2>
+          <div id="tarjetas" class="tarjetas">
+            <p class="cargando">Cargando autores…</p>
+          </div>
+        </section>
+
+        <section class="panel caja-ra" aria-labelledby="titulo-ra">
+          <div class="icono-camara" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
+              <circle cx="12" cy="13.5" r="3.8"/>
+            </svg>
+          </div>
+          <h2 id="titulo-ra">Realidad Aumentada</h2>
+          <p>Mostrá a la cámara la ficha impresa con la foto de un autor y descubrí su biografía y sus obras.</p>
+          <a href="#/ra" class="boton boton-ra boton-grande">Activar Cámara RA</a>
+          <a href="marcadores.html" target="_blank" class="enlace-sutil">Imprimir fichas con las fotos</a>
+
+          <div id="info-celular" class="info-celular" hidden>
+            <p><strong>Abrilo en tu celular</strong> (misma red WiFi):</p>
+            <div id="qr" class="qr" aria-hidden="true"></div>
+            <a id="url-celular" class="url-celular" href="#"></a>
+          </div>
+        </section>
+      </div>
+
+      <footer class="pie">
+        <button type="button" id="btn-salir" class="boton boton-contorno">Salir</button>
+      </footer>
+    </section>
+
+    <section id="vista-autor" class="vista" hidden>
+      <div id="detalle-autor" class="panel"></div>
+      <div class="acciones">
+        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+      </div>
+    </section>
+
+    <section id="vista-ra" class="vista" hidden>
+      <div id="ra-escenario" class="ra-escenario">
+        <video id="ra-video" playsinline muted autoplay></video>
+
+        <div class="ra-capa">
+          <div id="ra-marco" class="ra-marco">
+            <span class="esquina ei-sup"></span><span class="esquina ed-sup"></span>
+            <span class="esquina ei-inf"></span><span class="esquina ed-inf"></span>
+            <span class="linea-escaneo"></span>
+          </div>
+        </div>
+
+        <span id="ra-camara" class="ra-chip" hidden></span>
+        <button type="button" id="btn-cambiar" class="ra-cambiar" aria-label="Cambiar cámara" title="Cambiar cámara" hidden>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
+            <path d="M9 13.5a3 3 0 0 1 5.2-2M15 13.5a3 3 0 0 1-5.2 2"/>
+            <path d="M14.5 9.5v2h-2M9.5 17.5v-2h2"/>
+          </svg>
+        </button>
+
+        <div class="ra-estado-caja">
+          <p id="ra-estado" class="ra-estado" role="status" aria-live="polite">Iniciando cámara…</p>
+          <div class="ra-medidor" aria-hidden="true"><span id="ra-barra"></span></div>
+        </div>
+
+        <div id="ra-aviso" class="ra-aviso" hidden>
+          <div class="ra-aviso-tarjeta">
+            <p id="ra-aviso-texto"></p>
+            <button type="button" id="btn-reintentar" class="boton boton-ra">Reintentar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ra-controles">
+        <button type="button" id="btn-escaneo" class="boton boton-ra">Detener Escaneo</button>
+        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+      </div>
+    </section>
+
+    <section id="vista-salir" class="vista" hidden>
+      <div class="panel despedida">
+        <h2>¡Gracias por visitar Librarium!</h2>
+        <p>Ya podés cerrar esta pestaña.</p>
+        <a href="#/" class="boton boton-primario">Volver a empezar</a>
+      </div>
+    </section>
+  </main>
+
+  <div id="ra-hoja" class="fondo-modal" hidden>
+    <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo">
+      <p class="sello-reconocido" id="hoja-titulo">Marcador reconocido</p>
+      <div id="ra-hoja-cuerpo"></div>
+      <div class="acciones">
+        <button type="button" id="btn-seguir" class="boton boton-ra">Seguir escaneando</button>
+        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-salir" class="fondo-modal centrado" hidden>
+    <div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="salir-titulo">
+      <h2 id="salir-titulo">¿Querés salir de Librarium?</h2>
+      <div class="acciones">
+        <button type="button" id="btn-cancelar-salir" class="boton boton-contorno">Cancelar</button>
+        <button type="button" id="btn-confirmar-salir" class="boton boton-primario">Salir</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
