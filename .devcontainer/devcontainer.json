@@ -1,0 +1,21 @@
+{
+  "name": "Librarium",
+  "image": "mcr.microsoft.com/devcontainers/java:1-17-bookworm",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "Librarium",
+      "onAutoForward": "openBrowser"
+    },
+    "8443": {
+      "onAutoForward": "ignore"
+    }
+  },
+  "postCreateCommand": "chmod +x mvnw && ./mvnw -q -B package -DskipTests",
+  "postAttachCommand": "java -jar target/librarium.jar --sin-navegador",
+  "customizations": {
+    "vscode": {
+      "extensions": ["vscjava.vscode-java-pack"]
+    }
+  }
+}

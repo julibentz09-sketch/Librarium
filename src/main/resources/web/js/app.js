@@ -47,8 +47,14 @@ function navegar() {
   }
 }
 
+function direccionParaCelular() {
+  // publicada con HTTPS (por ejemplo en Codespaces) sirve la misma dirección
+  if (location.protocol === 'https:') return `${location.origin}/`;
+  return infoServidor.urlsCelular[0];
+}
+
 function mostrarInfoCelular() {
-  const url = infoServidor.urlsCelular[0];
+  const url = direccionParaCelular();
   if (!url || esMovil) return;
   const enlace = $('#url-celular');
   enlace.href = url;

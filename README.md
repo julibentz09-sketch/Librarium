@@ -44,6 +44,17 @@ El navegador del celular solo deja usar la cámara en páginas HTTPS, por eso el
 
 La primera vez Windows puede pedir permiso para que Java use la red: hay que permitirlo en **redes privadas**.
 
+### Probarlo desde GitHub (Codespaces)
+
+Sin instalar nada en la computadora:
+
+1. En la página del repositorio: **Code → Codespaces → Create codespace on main**.
+2. Esperar a que compile; el servidor arranca solo en la terminal.
+3. En la pestaña **Puertos**, clic derecho sobre el puerto **8080 → Port Visibility → Public**.
+4. Abrir la dirección del puerto (`https://...-8080.app.github.dev`). Funciona también en el celular y la cámara anda directo, porque ya es HTTPS. El QR del inicio muestra esa misma dirección.
+
+Al terminar conviene detener el codespace (**Codespaces → Stop**) para no gastar horas del plan gratuito.
+
 ### Fichas para la cámara
 
 En el inicio está el enlace **Imprimir fichas con las fotos** (`marcadores.html`). Se pueden imprimir a color o en blanco y negro. Al escanear, la foto tiene que ocupar casi todo el marco verde y estar bien iluminada.
