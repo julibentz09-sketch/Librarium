@@ -48,8 +48,8 @@ function navegar() {
 }
 
 function direccionParaCelular() {
-  // publicada con HTTPS (por ejemplo en Codespaces) sirve la misma dirección
-  if (location.protocol === 'https:') return `${location.origin}/`;
+  // publicada con HTTPS (GitHub Pages o Codespaces) sirve la misma dirección
+  if (location.protocol === 'https:') return location.origin + location.pathname;
   return infoServidor.urlsCelular[0];
 }
 

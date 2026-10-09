@@ -40,10 +40,11 @@
     <a class="boton volver" href="./">Volver a Librarium</a>
   </section>
   <main id="fichas" class="fichas"><p>Cargando…</p></main>
-  <script>
-    const escapar = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    fetch('api/autores')
-      .then((r) => r.json())
+  <script type="module">
+    import { obtenerAutores } from './js/api.js';
+    import { escapar } from './js/plantillas.js';
+
+    obtenerAutores()
       .then((autores) => {
         document.getElementById('fichas').innerHTML = autores.map((a) => `
           <article class="ficha">

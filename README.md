@@ -44,6 +44,18 @@ El navegador del celular solo deja usar la cámara en páginas HTTPS, por eso el
 
 La primera vez Windows puede pedir permiso para que Java use la red: hay que permitirlo en **redes privadas**.
 
+### Versión publicada en GitHub Pages
+
+Cada vez que se sube un cambio a `main`, GitHub Actions compila el proyecto, corre las pruebas y publica la
+página en **https://julibentz09-sketch.github.io/Librarium/**, que se puede abrir desde cualquier red.
+
+En Pages no corre el servidor Java: `ExportadorSitio` genera los datos en JSON a partir de la base de datos
+y el reconocimiento de las fichas se hace en el navegador (`js/reconocedor.js`, el mismo algoritmo que
+`ReconocedorImagen`). La página detecta sola si tiene servidor o no.
+
+Para activarlo la primera vez: **Settings → Pages → Source: GitHub Actions** (el repositorio tiene que ser
+público, o la cuenta tener GitHub Pro / Education).
+
 ### Probarlo desde GitHub (Codespaces)
 
 Sin instalar nada en la computadora:
@@ -63,7 +75,8 @@ En el inicio está el enlace **Imprimir fichas con las fotos** (`marcadores.html
 
 ```
 src/main/java/py/librarium
-├── Librarium.java        clase principal
+├── Librarium.java        clase principal (servidor)
+├── ExportadorSitio.java  genera los datos de la versión de GitHub Pages
 ├── conexion/             conexión a SQLite y creación de las tablas
 ├── dao/                  consultas (AutorDAO, MarcadorDAO)
 ├── modelo/               Autor, Obra, Multimedia, Marcador

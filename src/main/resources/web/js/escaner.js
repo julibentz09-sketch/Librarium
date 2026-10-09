@@ -29,7 +29,7 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
 
   const lienzo = document.createElement('canvas');
   lienzo.width = lienzo.height = LADO_RECORTE;
-  const ctx = lienzo.getContext('2d');
+  const ctx = lienzo.getContext('2d', { willReadFrequently: true });
 
   let activo = false;
   let escaneando = false;
@@ -180,14 +180,13 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
     try {
       if (video.readyState >= 2 && video.videoWidth > 0) {
         copiarRegion(regionDelMarco());
-        const imagen = await new Promise((listo) => lienzo.toBlob(listo, 'image/jpeg', 0.85));
-        const resultado = await api.reconocer(imagen);
+        const resultado = await api.reconocer(lienzo);
         if (!escaneando || miCiclo !== ciclo) return;
         procesarResultado(resultado);
         if (!escaneando) return;
       }
     } catch (error) {
-      mostrarEstado('Sin conexión con el servidor. Reintentando…');
+      mostrarEstado('No se pudo analizar la imagen. Reintentando…');
     }
     temporizador = setTimeout(() => analizar(miCiclo), INTERVALO_MS);
   }
