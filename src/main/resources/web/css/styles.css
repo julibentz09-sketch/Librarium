@@ -142,7 +142,7 @@ body.modo-bienvenida main { display: flex; align-items: center; justify-content:
   padding-left: .2em;
 }
 .bienvenida-lema { margin: 6px 0 0; color: var(--esmeralda); font-weight: 700; letter-spacing: .04em; }
-.bienvenida-texto { margin: 20px 0 32px; max-width: 44ch; opacity: .85; }
+.bienvenida-texto { margin: 20px 0 32px; max-width: 52ch; opacity: .85; }
 .bienvenida .boton-grande { min-width: 220px; }
 
 /* ===== 1. Menú ===== */
