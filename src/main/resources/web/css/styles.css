@@ -107,7 +107,45 @@ main {
 .boton-chico { min-height: 38px; padding: 6px 14px; font-size: .88rem; }
 .boton-sutil { background: var(--esmeralda-suave); color: var(--esmeralda-oscuro); }
 
-/* ===== 1. Inicio ===== */
+/* ===== 0. Bienvenida ===== */
+body.modo-bienvenida { background: var(--azul-marino); }
+body.modo-bienvenida .encabezado { display: none; }
+body.modo-bienvenida main { display: flex; align-items: center; justify-content: center; }
+.bienvenida {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: var(--blanco);
+  padding: 24px 0;
+}
+.bienvenida-fotos { display: flex; justify-content: center; margin-bottom: 28px; }
+.bienvenida-fotos img {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 25%;
+  border: 3px solid var(--azul-marino);
+  box-shadow: 0 0 0 2px var(--esmeralda);
+  background: var(--borde);
+}
+.bienvenida-fotos img + img { margin-left: -14px; }
+.bienvenida-saludo { margin: 0; font-size: 1.05rem; opacity: .8; }
+.bienvenida-titulo {
+  margin: 4px 0 0;
+  color: var(--blanco);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.3rem, 10vw, 3.6rem);
+  letter-spacing: .2em;
+  padding-left: .2em;
+}
+.bienvenida-lema { margin: 6px 0 0; color: var(--esmeralda); font-weight: 700; letter-spacing: .04em; }
+.bienvenida-texto { margin: 20px 0 32px; max-width: 44ch; opacity: .85; }
+.bienvenida .boton-grande { min-width: 220px; }
+
+/* ===== 1. Menú ===== */
 .portada {
   max-width: 860px;
   margin: 0 auto;

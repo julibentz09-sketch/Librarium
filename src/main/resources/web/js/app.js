@@ -13,7 +13,8 @@ const buscarAutor = (id) => autores.find((a) => a.id === id);
 const escaner = crearEscaner({ buscarAutor, infoServidor: () => infoServidor });
 
 const vistas = {
-  inicio: $('#vista-inicio'),
+  bienvenida: $('#vista-bienvenida'),
+  menu: $('#vista-menu'),
   galeria: $('#vista-galeria'),
   autor: $('#vista-autor'),
   ra: $('#vista-ra'),
@@ -25,6 +26,7 @@ function mostrarVista(nombre, titulo = 'Librarium') {
     vista.hidden = clave !== nombre;
   }
   document.body.classList.toggle('modo-ra', nombre === 'ra');
+  document.body.classList.toggle('modo-bienvenida', nombre === 'bienvenida');
   document.title = titulo;
   window.scrollTo(0, 0);
 }
@@ -38,6 +40,8 @@ function navegar() {
   if (autor) {
     $('#detalle-autor').innerHTML = detalleAutor(autor);
     mostrarVista('autor', `${autor.nombre} · Librarium`);
+  } else if (seccion === 'menu') {
+    mostrarVista('menu', 'Menú · Librarium');
   } else if (seccion === 'galeria') {
     mostrarVista('galeria', 'Galería Digital · Librarium');
   } else if (seccion === 'ra') {
@@ -46,7 +50,7 @@ function navegar() {
   } else if (seccion === 'salir') {
     mostrarVista('salir');
   } else {
-    mostrarVista('inicio');
+    mostrarVista('bienvenida');
   }
 }
 

@@ -11,14 +11,30 @@
 </head>
 <body>
   <header class="encabezado">
-    <a href="#/" class="marca">
+    <a href="#/menu" class="marca">
       <h1>LIBRARIUM</h1>
       <p>Literatura Paraguaya Interactiva</p>
     </a>
   </header>
 
   <main id="app">
-    <section id="vista-inicio" class="vista" hidden>
+    <section id="vista-bienvenida" class="vista" hidden>
+      <div class="bienvenida">
+        <div class="bienvenida-fotos" aria-hidden="true">
+          <img src="img/roa-bastos.png" alt="">
+          <img src="img/josefina-pla.png" alt="">
+          <img src="img/delfina-acosta.png" alt="">
+          <img src="img/mauricio-cardozo-ocampo.png" alt="">
+        </div>
+        <p class="bienvenida-saludo">Bienvenido a</p>
+        <h2 class="bienvenida-titulo">LIBRARIUM</h2>
+        <p class="bienvenida-lema">Literatura Paraguaya Interactiva</p>
+        <p class="bienvenida-texto">Conocé la vida y la obra de grandes escritores paraguayos con una galería digital y con realidad aumentada desde la cámara de tu celular.</p>
+        <a href="#/menu" class="boton boton-ra boton-grande">Comenzar</a>
+      </div>
+    </section>
+
+    <section id="vista-menu" class="vista" hidden>
       <div class="portada">
         <h2 class="portada-titulo">¿Cómo querés conocer a nuestros autores?</h2>
         <p class="portada-texto">Recorré la galería con las biografías y obras, o usá la cámara para descubrirlos desde las fichas impresas.</p>
@@ -70,7 +86,7 @@
       </section>
       <div class="acciones">
         <a href="#/ra" class="boton boton-ra">Probar con la cámara</a>
-        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+        <a href="#/menu" class="boton boton-primario">Volver al Menú</a>
       </div>
     </section>
 
@@ -78,7 +94,7 @@
       <div id="detalle-autor" class="panel"></div>
       <div class="acciones">
         <a href="#/galeria" class="boton boton-contorno">Volver a la Galería</a>
-        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+        <a href="#/menu" class="boton boton-primario">Volver al Menú</a>
       </div>
     </section>
 
@@ -118,7 +134,7 @@
 
       <div class="ra-controles">
         <button type="button" id="btn-escaneo" class="boton boton-ra">Detener Escaneo</button>
-        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+        <a href="#/menu" class="boton boton-primario">Volver al Menú</a>
       </div>
     </section>
 
@@ -137,7 +153,7 @@
       <div id="ra-hoja-cuerpo"></div>
       <div class="acciones">
         <button type="button" id="btn-seguir" class="boton boton-ra">Seguir escaneando</button>
-        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+        <a href="#/menu" class="boton boton-primario">Volver al Menú</a>
       </div>
     </div>
   </div>
