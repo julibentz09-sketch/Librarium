@@ -73,6 +73,7 @@ main {
 }
 .titulo-seccion { margin: 0 0 16px; font-size: 1.2rem; }
 .cargando, .error-carga { color: var(--apagado); }
+.tarjetas > .cargando, .tarjetas > .error-carga { grid-column: 1 / -1; }
 .error-carga { color: #B91C1C; }
 
 /* ===== Botones ===== */
@@ -107,12 +108,54 @@ main {
 .boton-sutil { background: var(--esmeralda-suave); color: var(--esmeralda-oscuro); }
 
 /* ===== 1. Inicio ===== */
-.inicio-grilla {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  gap: 24px;
-  align-items: stretch;
+.portada {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
 }
+.portada-titulo { margin: 8px 0 0; font-size: clamp(1.3rem, 4vw, 1.75rem); }
+.portada-texto { margin: 0; max-width: 52ch; }
+.opciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+  margin: 12px 0 4px;
+}
+.opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 24px;
+  border-radius: 20px;
+  border: 2px solid transparent;
+  text-decoration: none;
+  box-shadow: var(--sombra);
+  transition: transform .15s ease, box-shadow .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.opcion:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(30, 41, 59, .16); }
+.opcion:active { transform: scale(.98); }
+.opcion-galeria { background: var(--azul-marino); color: var(--blanco); }
+.opcion-ra { background: var(--esmeralda); color: var(--texto-boton-ra); }
+.opcion-icono {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+.opcion-galeria .opcion-icono { background: rgba(255, 255, 255, .12); color: var(--esmeralda); }
+.opcion-ra .opcion-icono { background: rgba(255, 255, 255, .3); color: var(--texto-boton-ra); }
+.opcion-nombre { font-size: 1.4rem; font-weight: 800; line-height: 1.2; }
+.opcion-desc { font-size: .95rem; opacity: .85; max-width: 30ch; }
+
 .tarjetas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -141,34 +184,13 @@ main {
 .tarjeta .etiqueta { margin: 0; font-size: .82rem; color: var(--apagado); }
 .tarjeta .boton { margin-top: auto; width: 100%; white-space: nowrap; padding-left: 8px; padding-right: 8px; }
 
-.caja-ra {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  text-align: center;
-  background: linear-gradient(165deg, #ECFDF5 0%, var(--blanco) 60%);
-  border: 2px solid var(--esmeralda);
-}
-.caja-ra h2 { margin: 4px 0 0; font-size: 1.35rem; }
-.caja-ra p { margin: 0; max-width: 34ch; }
-.icono-camara {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--esmeralda);
-  color: var(--blanco);
-  box-shadow: 0 0 0 10px var(--esmeralda-suave);
-}
 .enlace-sutil { color: var(--esmeralda-oscuro); font-size: .9rem; font-weight: 600; }
 .info-celular {
   margin-top: 8px;
   padding-top: 14px;
   border-top: 1px dashed var(--borde);
   width: 100%;
+  max-width: 360px;
   font-size: .9rem;
 }
 .info-celular p { margin: 0 auto 8px; }
@@ -413,11 +435,7 @@ body.modo-ra main { display: flex; flex-direction: column; min-height: 0; paddin
   .hoja { border-radius: 22px; padding: 26px; }
 }
 
-@media (max-width: 900px) {
-  .inicio-grilla { grid-template-columns: 1fr; }
-}
-
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) {
   .tarjetas { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
@@ -440,15 +458,21 @@ body.modo-ra main { display: flex; flex-direction: column; min-height: 0; paddin
   .ra-controles .boton-primario { background: var(--blanco); color: var(--azul-marino); }
   .info-celular { display: none; }
 
-  /* En el celular la cámara es lo principal: el panel de RA va primero y más compacto */
-  .inicio-grilla { gap: 16px; }
-  .caja-ra { order: -1; display: grid; grid-template-columns: auto 1fr; text-align: left; gap: 6px 14px; }
-  .caja-ra .icono-camara { grid-row: span 2; width: 60px; height: 60px; box-shadow: 0 0 0 6px var(--esmeralda-suave); }
-  .caja-ra .icono-camara svg { width: 30px; height: 30px; }
-  .caja-ra h2 { margin: 0; align-self: end; font-size: 1.15rem; }
-  .caja-ra p { font-size: .92rem; }
-  .caja-ra .boton-grande, .caja-ra .enlace-sutil { grid-column: 1 / -1; justify-self: stretch; text-align: center; }
-  .caja-ra .boton-grande { margin-top: 6px; }
+  /* En el celular los dos botones van uno debajo del otro, la cámara primero */
+  .opciones { grid-template-columns: 1fr; gap: 14px; margin-top: 4px; }
+  .opcion-ra { order: -1; }
+  .opcion {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 16px;
+    padding: 18px;
+    text-align: left;
+    align-items: center;
+  }
+  .opcion-icono { grid-row: span 2; width: 64px; height: 64px; margin: 0; }
+  .opcion-icono svg { width: 32px; height: 32px; }
+  .opcion-nombre { font-size: 1.2rem; align-self: end; }
+  .opcion-desc { font-size: .88rem; align-self: start; }
   .tarjeta-cuerpo { padding: 10px; }
   .tarjeta .boton { font-size: .85rem; }
 }

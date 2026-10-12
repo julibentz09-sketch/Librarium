@@ -14,6 +14,7 @@ const escaner = crearEscaner({ buscarAutor, infoServidor: () => infoServidor });
 
 const vistas = {
   inicio: $('#vista-inicio'),
+  galeria: $('#vista-galeria'),
   autor: $('#vista-autor'),
   ra: $('#vista-ra'),
   salir: $('#vista-salir')
@@ -37,6 +38,8 @@ function navegar() {
   if (autor) {
     $('#detalle-autor').innerHTML = detalleAutor(autor);
     mostrarVista('autor', `${autor.nombre} · Librarium`);
+  } else if (seccion === 'galeria') {
+    mostrarVista('galeria', 'Galería Digital · Librarium');
   } else if (seccion === 'ra') {
     mostrarVista('ra', 'Cámara RA · Librarium');
     escaner.entrar();

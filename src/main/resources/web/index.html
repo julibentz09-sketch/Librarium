@@ -19,32 +19,41 @@
 
   <main id="app">
     <section id="vista-inicio" class="vista" hidden>
-      <div class="inicio-grilla">
-        <section class="panel galeria" aria-labelledby="titulo-galeria">
-          <h2 id="titulo-galeria" class="titulo-seccion">Galería Digital</h2>
-          <div id="tarjetas" class="tarjetas">
-            <p class="cargando">Cargando autores…</p>
-          </div>
-        </section>
+      <div class="portada">
+        <h2 class="portada-titulo">¿Cómo querés conocer a nuestros autores?</h2>
+        <p class="portada-texto">Recorré la galería con las biografías y obras, o usá la cámara para descubrirlos desde las fichas impresas.</p>
 
-        <section class="panel caja-ra" aria-labelledby="titulo-ra">
-          <div class="icono-camara" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
-              <circle cx="12" cy="13.5" r="3.8"/>
-            </svg>
-          </div>
-          <h2 id="titulo-ra">Realidad Aumentada</h2>
-          <p>Mostrá a la cámara la ficha impresa con la foto de un autor y descubrí su biografía y sus obras.</p>
-          <a href="#/ra" class="boton boton-ra boton-grande">Activar Cámara RA</a>
-          <a href="marcadores.html" target="_blank" class="enlace-sutil">Imprimir fichas con las fotos</a>
+        <nav class="opciones" aria-label="Opciones principales">
+          <a href="#/galeria" class="opcion opcion-galeria">
+            <span class="opcion-icono" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
+                <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>
+              </svg>
+            </span>
+            <span class="opcion-nombre">Galería Digital</span>
+            <span class="opcion-desc">Mirá las fichas de los autores paraguayos y sus obras principales.</span>
+          </a>
 
-          <div id="info-celular" class="info-celular" hidden>
-            <p><strong>Abrilo en tu celular</strong> (misma red WiFi):</p>
-            <div id="qr" class="qr" aria-hidden="true"></div>
-            <a id="url-celular" class="url-celular" href="#"></a>
-          </div>
-        </section>
+          <a href="#/ra" class="opcion opcion-ra">
+            <span class="opcion-icono" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/>
+                <circle cx="12" cy="13.5" r="3.8"/>
+              </svg>
+            </span>
+            <span class="opcion-nombre">Realidad Aumentada</span>
+            <span class="opcion-desc">Mostrá a la cámara la ficha impresa de un autor y descubrí su historia.</span>
+          </a>
+        </nav>
+
+        <a href="marcadores.html" target="_blank" class="enlace-sutil">Imprimir fichas con las fotos</a>
+
+        <div id="info-celular" class="info-celular" hidden>
+          <p><strong>Abrilo en tu celular</strong> (misma red WiFi):</p>
+          <div id="qr" class="qr" aria-hidden="true"></div>
+          <a id="url-celular" class="url-celular" href="#"></a>
+        </div>
       </div>
 
       <footer class="pie">
@@ -52,9 +61,23 @@
       </footer>
     </section>
 
+    <section id="vista-galeria" class="vista" hidden>
+      <section class="panel" aria-labelledby="titulo-galeria">
+        <h2 id="titulo-galeria" class="titulo-seccion">Galería Digital</h2>
+        <div id="tarjetas" class="tarjetas">
+          <p class="cargando">Cargando autores…</p>
+        </div>
+      </section>
+      <div class="acciones">
+        <a href="#/ra" class="boton boton-ra">Probar con la cámara</a>
+        <a href="#/" class="boton boton-primario">Volver al Menú</a>
+      </div>
+    </section>
+
     <section id="vista-autor" class="vista" hidden>
       <div id="detalle-autor" class="panel"></div>
       <div class="acciones">
+        <a href="#/galeria" class="boton boton-contorno">Volver a la Galería</a>
         <a href="#/" class="boton boton-primario">Volver al Menú</a>
       </div>
     </section>
