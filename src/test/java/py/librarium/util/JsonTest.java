@@ -28,6 +28,13 @@ class JsonTest {
     }
 
     @Test
+    void convierteArreglos() {
+        List<double[]> esquinas = List.of(new double[]{0.1, 0.2}, new double[]{0.5, 1.0});
+
+        assertEquals("[[0.1,0.2],[0.5,1.0]]", Json.convertir(esquinas));
+    }
+
+    @Test
     void escapaComillasYSaltosDeLinea() {
         assertEquals("\"dijo \\\"hola\\\"\\nchau\"", Json.convertir("dijo \"hola\"\nchau"));
     }

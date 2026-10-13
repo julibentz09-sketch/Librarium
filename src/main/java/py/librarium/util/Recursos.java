@@ -16,6 +16,15 @@ public final class Recursos {
         return Recursos.class.getResourceAsStream("/web" + limpia);
     }
 
+    public static byte[] leerBytes(String ruta) throws IOException {
+        try (InputStream in = abrir(ruta)) {
+            if (in == null) {
+                throw new IOException("No se encontró " + ruta);
+            }
+            return in.readAllBytes();
+        }
+    }
+
     public static BufferedImage leerImagen(String ruta) throws IOException {
         try (InputStream in = abrir(ruta)) {
             if (in == null) {

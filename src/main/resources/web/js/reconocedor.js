@@ -1,168 +1,144 @@
-// Mismo algoritmo que ReconocedorImagen.java, para la versión de GitHub Pages
-// (ahí no hay servidor Java y el reconocimiento se hace en el navegador).
+// Mismo algoritmo que ReconocedorImagen.java (OpenCV: ORB + BFMatcher + homografía con RANSAC),
+// para la versión de GitHub Pages: ahí no hay servidor Java y el reconocimiento se hace en el navegador
+// con OpenCV.js. Pesa unos 10 MB, por eso se descarga recién al entrar a escanear.
+
+const URL_OPENCV = 'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js';
 
 export const UMBRAL = 0.50;
-const MARGEN = 0.08;
-const LADO = 32;
-const ZONAS = 4;
-const ORIENTACIONES = 8;
-const CONTRASTE_MINIMO = 6.0;
-const ESCALAS = [1.0, 0.87, 0.76, 0.66, 0.57, 0.49, 0.42];
-const CORRIMIENTOS = [-0.12, 0, 0.12];
-const TOLERANCIA_COLOR = 6.0;
-const ESCALA_COLOR = 40.0;
+const INLIERS_PUNTAJE_COMPLETO = 30;
+const VENTAJA_SOBRE_SEGUNDO = 2.0;
+const PUNTOS_ORB = 1000;
+const LADO_MAXIMO = 480;
+const PRUEBA_DE_LOWE = 0.75;
+const PARES_MINIMOS = 8;
+const ERROR_RANSAC = 5.0;
+const AREA_MINIMA = 0.01;
 
+let cv = null;
+let cargando = null;
 const referencias = [];
 
-function imagenGris({ width, height, data }) {
-  const total = width * height;
-  const gris = new Float32Array(total);
-  const u = new Float32Array(total);
-  const v = new Float32Array(total);
-  for (let i = 0; i < total; i++) {
-    const alfa = data[i * 4 + 3] / 255;
-    const r = data[i * 4] * alfa + 255 * (1 - alfa);
-    const g = data[i * 4 + 1] * alfa + 255 * (1 - alfa);
-    const b = data[i * 4 + 2] * alfa + 255 * (1 - alfa);
-    gris[i] = 0.299 * r + 0.587 * g + 0.114 * b;
-    u[i] = r - g;
-    v[i] = b - (r + g) / 2;
-  }
-  return { ancho: width, alto: height, gris, u, v };
-}
-
-const limitar = (valor, min, max) => Math.max(min, Math.min(max, valor));
-
-function reducir(imagen, canal, x, y, w, h, anchoSalida, altoSalida) {
-  const salida = new Float32Array(anchoSalida * altoSalida);
-  for (let fila = 0; fila < altoSalida; fila++) {
-    const y0 = limitar(Math.floor(y + fila * h / altoSalida), 0, imagen.alto - 1);
-    const y1 = limitar(Math.floor(y + (fila + 1) * h / altoSalida), y0 + 1, imagen.alto);
-    for (let col = 0; col < anchoSalida; col++) {
-      const x0 = limitar(Math.floor(x + col * w / anchoSalida), 0, imagen.ancho - 1);
-      const x1 = limitar(Math.floor(x + (col + 1) * w / anchoSalida), x0 + 1, imagen.ancho);
-      let suma = 0;
-      for (let yy = y0; yy < y1; yy++) {
-        for (let xx = x0; xx < x1; xx++) {
-          suma += canal[yy * imagen.ancho + xx];
+export function cargarOpenCV() {
+  if (!cargando) {
+    cargando = new Promise((listo, fallo) => {
+      const script = document.createElement('script');
+      script.src = URL_OPENCV;
+      script.async = true;
+      script.onload = async () => {
+        try {
+          let modulo = window.cv;
+          // según la versión, opencv.js deja una promesa o un objeto que avisa cuando termina de iniciar
+          if (modulo instanceof Promise) {
+            modulo = await modulo;
+          } else if (!modulo.Mat) {
+            await new Promise((iniciado) => { modulo.onRuntimeInitialized = iniciado; });
+          }
+          cv = modulo;
+          // no se pasa el módulo a listo(): tiene un método then() y la promesa se quedaría
+          // esperándolo para siempre (pasa con los módulos de Emscripten)
+          listo();
+        } catch (error) {
+          fallo(error);
         }
-      }
-      salida[fila * anchoSalida + col] = suma / ((y1 - y0) * (x1 - x0));
+      };
+      script.onerror = () => {
+        cargando = null;
+        fallo(new Error('No se pudo descargar OpenCV'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return cargando;
+}
+
+// Lee un canvas o una imagen a escala de grises y achica lo muy grande (ORB no necesita más)
+function leerGris(fuente) {
+  const color = cv.imread(fuente);
+  const gris = new cv.Mat();
+  cv.cvtColor(color, gris, cv.COLOR_RGBA2GRAY);
+  color.delete();
+  const lado = Math.max(gris.cols, gris.rows);
+  if (lado <= LADO_MAXIMO) return gris;
+  const chica = new cv.Mat();
+  const escala = LADO_MAXIMO / lado;
+  cv.resize(gris, chica, new cv.Size(0, 0), escala, escala, cv.INTER_AREA);
+  gris.delete();
+  return chica;
+}
+
+function detectar(gris) {
+  const orb = new cv.ORB(PUNTOS_ORB);
+  const puntos = new cv.KeyPointVector();
+  const descriptores = new cv.Mat();
+  const sinMascara = new cv.Mat();
+  orb.detectAndCompute(gris, sinMascara, puntos, descriptores);
+  orb.delete();
+  sinMascara.delete();
+  return { puntos, descriptores };
+}
+
+// Lleva las esquinas de la foto a la imagen. Si el contorno sale retorcido o diminuto,
+// la homografía es casualidad y no se cuenta.
+function proyectarEsquinas(homografia, ref, ancho, alto) {
+  const esquinasRef = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, ref.ancho, 0, ref.ancho, ref.alto, 0, ref.alto]);
+  const proyectadas = new cv.Mat();
+  cv.perspectiveTransform(esquinasRef, proyectadas, homografia);
+  const p = Array.from(proyectadas.data32F);
+  esquinasRef.delete();
+  proyectadas.delete();
+
+  const contorno = cv.matFromArray(4, 1, cv.CV_32SC2, p.map(Math.round));
+  const poligono = cv.matFromArray(4, 1, cv.CV_32FC2, p);
+  const convexo = cv.isContourConvex(contorno);
+  const area = cv.contourArea(poligono);
+  contorno.delete();
+  poligono.delete();
+  if (!convexo || area < AREA_MINIMA * ancho * alto) return null;
+
+  const redondear = (valor) => Math.round(valor * 1000) / 1000;
+  const esquinas = [];
+  for (let i = 0; i < 4; i++) {
+    esquinas.push([redondear(p[i * 2] / ancho), redondear(p[i * 2 + 1] / alto)]);
+  }
+  return esquinas;
+}
+
+function comparar(ref, cuadro, ancho, alto) {
+  const buscador = new cv.BFMatcher(cv.NORM_HAMMING, false);
+  const vecinos = new cv.DMatchVectorVector();
+  buscador.knnMatch(cuadro.descriptores, ref.descriptores, vecinos, 2);
+
+  const origen = [];
+  const destino = [];
+  for (let i = 0; i < vecinos.size(); i++) {
+    const par = vecinos.get(i);
+    if (par.size() === 2 && par.get(0).distance < PRUEBA_DE_LOWE * par.get(1).distance) {
+      const m = par.get(0);
+      const pr = ref.puntos.get(m.trainIdx).pt;
+      const pc = cuadro.puntos.get(m.queryIdx).pt;
+      origen.push(pr.x, pr.y);
+      destino.push(pc.x, pc.y);
     }
+    par.delete();
   }
-  return salida;
-}
+  vecinos.delete();
+  buscador.delete();
+  if (origen.length / 2 < PARES_MINIMOS) return { inliers: 0, esquinas: null };
 
-function promedio(valores) {
-  let suma = 0;
-  for (const v of valores) suma += v;
-  return suma / valores.length;
-}
-
-function desvioEstandar(valores) {
-  const media = promedio(valores);
-  let suma = 0;
-  for (const v of valores) suma += (v - media) * (v - media);
-  return Math.sqrt(suma / valores.length);
-}
-
-function normalizar(valores) {
-  const media = promedio(valores);
-  const r = new Float32Array(valores.length);
-  let norma = 0;
-  for (let i = 0; i < valores.length; i++) {
-    r[i] = valores[i] - media;
-    norma += r[i] * r[i];
+  const src = cv.matFromArray(origen.length / 2, 1, cv.CV_32FC2, origen);
+  const dst = cv.matFromArray(destino.length / 2, 1, cv.CV_32FC2, destino);
+  const mascara = new cv.Mat();
+  const homografia = cv.findHomography(src, dst, cv.RANSAC, ERROR_RANSAC, mascara);
+  let resultado = { inliers: 0, esquinas: null };
+  if (!homografia.empty()) {
+    const esquinas = proyectarEsquinas(homografia, ref, ancho, alto);
+    if (esquinas) resultado = { inliers: cv.countNonZero(mascara), esquinas };
   }
-  norma = Math.sqrt(norma);
-  if (norma > 0) {
-    for (let i = 0; i < r.length; i++) r[i] /= norma;
-  }
-  return r;
-}
-
-function productoPunto(a, b) {
-  let suma = 0;
-  for (let i = 0; i < a.length; i++) suma += a[i] * b[i];
-  return suma;
-}
-
-function histogramaBordes(p) {
-  const hist = new Float32Array(ZONAS * ZONAS * ORIENTACIONES);
-  const tamZona = LADO / ZONAS;
-  for (let y = 1; y < LADO - 1; y++) {
-    for (let x = 1; x < LADO - 1; x++) {
-      const gx = p[y * LADO + x + 1] - p[y * LADO + x - 1];
-      const gy = p[(y + 1) * LADO + x] - p[(y - 1) * LADO + x];
-      const magnitud = Math.hypot(gx, gy);
-      if (magnitud === 0) continue;
-      let angulo = Math.atan2(gy, gx);
-      if (angulo < 0) angulo += Math.PI;
-      const orientacion = Math.min(ORIENTACIONES - 1, Math.floor(angulo / Math.PI * ORIENTACIONES));
-      const zona = Math.floor(y / tamZona) * ZONAS + Math.floor(x / tamZona);
-      hist[zona * ORIENTACIONES + orientacion] += magnitud;
-    }
-  }
-  return hist;
-}
-
-function colorPorZona(imagen, x, y, w, h) {
-  const u = reducir(imagen, imagen.u, x, y, w, h, ZONAS, ZONAS);
-  const v = reducir(imagen, imagen.v, x, y, w, h, ZONAS, ZONAS);
-  const promedioU = promedio(u);
-  const promedioV = promedio(v);
-  const color = new Float32Array(u.length);
-  for (let i = 0; i < color.length; i++) {
-    color[i] = Math.hypot(u[i] - promedioU, v[i] - promedioV);
-  }
-  return color;
-}
-
-function calcularFirma(imagen, x, y, w, h) {
-  const p = reducir(imagen, imagen.gris, x, y, w, h, LADO, LADO);
-  if (desvioEstandar(p) < CONTRASTE_MINIMO) return null;
-  return { gris: normalizar(p), bordes: normalizar(histogramaBordes(p)), color: colorPorZona(imagen, x, y, w, h) };
-}
-
-function comparar(cuadro, referencia) {
-  const forma = 0.5 * productoPunto(cuadro.gris, referencia.gris) + 0.5 * productoPunto(cuadro.bordes, referencia.bordes);
-  let exceso = 0;
-  for (let i = 0; i < cuadro.color.length; i++) {
-    exceso += Math.max(0, cuadro.color[i] - referencia.color[i] - TOLERANCIA_COLOR);
-  }
-  return forma - Math.min(0.5, exceso / (cuadro.color.length * ESCALA_COLOR));
-}
-
-function buscar(imagen, ref) {
-  let baseAncho = imagen.ancho;
-  let baseAlto = imagen.ancho / ref.proporcion;
-  if (baseAlto > imagen.alto) {
-    baseAlto = imagen.alto;
-    baseAncho = imagen.alto * ref.proporcion;
-  }
-  let mejor = 0;
-  for (const escala of ESCALAS) {
-    const w = baseAncho * escala;
-    const h = baseAlto * escala;
-    for (const dy of CORRIMIENTOS) {
-      for (const dx of CORRIMIENTOS) {
-        const x = Math.max(0, Math.min(imagen.ancho - w, (imagen.ancho - w) / 2 + dx * w));
-        const y = Math.max(0, Math.min(imagen.alto - h, (imagen.alto - h) / 2 + dy * h));
-        const firma = calcularFirma(imagen, x, y, w, h);
-        if (firma) mejor = Math.max(mejor, comparar(firma, ref.firma));
-      }
-    }
-  }
-  return mejor;
-}
-
-function leerPixeles(fuente, ancho, alto) {
-  const lienzo = document.createElement('canvas');
-  lienzo.width = ancho;
-  lienzo.height = alto;
-  const ctx = lienzo.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(fuente, 0, 0);
-  return ctx.getImageData(0, 0, ancho, alto);
+  src.delete();
+  dst.delete();
+  mascara.delete();
+  homografia.delete();
+  return resultado;
 }
 
 function cargarImagen(src) {
@@ -175,32 +151,54 @@ function cargarImagen(src) {
 }
 
 export async function cargarReferencias(marcadores) {
+  await cargarOpenCV();
   for (const marcador of marcadores) {
     const foto = await cargarImagen(marcador.imagen);
-    const imagen = imagenGris(leerPixeles(foto, foto.naturalWidth, foto.naturalHeight));
-    const firma = calcularFirma(imagen, 0, 0, imagen.ancho, imagen.alto);
-    if (firma) {
-      referencias.push({ autorId: marcador.autorId, proporcion: imagen.ancho / imagen.alto, firma });
+    const lienzo = document.createElement('canvas');
+    lienzo.width = foto.naturalWidth;
+    lienzo.height = foto.naturalHeight;
+    lienzo.getContext('2d').drawImage(foto, 0, 0);
+    const gris = leerGris(lienzo);
+    const { puntos, descriptores } = detectar(gris);
+    if (descriptores.rows >= PARES_MINIMOS) {
+      referencias.push({ autorId: marcador.autorId, ancho: gris.cols, alto: gris.rows, puntos, descriptores });
+    } else {
+      puntos.delete();
+      descriptores.delete();
     }
+    gris.delete();
   }
 }
 
 export function analizar(lienzo) {
-  const ctx = lienzo.getContext('2d', { willReadFrequently: true });
-  const imagen = imagenGris(ctx.getImageData(0, 0, lienzo.width, lienzo.height));
+  const gris = leerGris(lienzo);
+  const cuadro = detectar(gris);
   let mejorId = null;
-  let mejor = 0;
+  let mejor = { inliers: 0, esquinas: null };
   let segundo = 0;
-  for (const ref of referencias) {
-    const puntaje = buscar(imagen, ref);
-    if (puntaje > mejor) {
-      segundo = mejor;
-      mejor = puntaje;
-      mejorId = ref.autorId;
-    } else if (puntaje > segundo) {
-      segundo = puntaje;
+  if (cuadro.descriptores.rows >= PARES_MINIMOS) {
+    for (const ref of referencias) {
+      const c = comparar(ref, cuadro, gris.cols, gris.rows);
+      if (c.inliers > mejor.inliers) {
+        segundo = mejor.inliers;
+        mejor = c;
+        mejorId = ref.autorId;
+      } else if (c.inliers > segundo) {
+        segundo = c.inliers;
+      }
     }
   }
-  const coincide = mejorId !== null && mejor >= UMBRAL && mejor - segundo >= MARGEN;
-  return { coincide, autorId: coincide ? mejorId : null, puntaje: Math.round(mejor * 1000) / 1000, umbral: UMBRAL };
+  gris.delete();
+  cuadro.puntos.delete();
+  cuadro.descriptores.delete();
+
+  const puntaje = Math.min(1, mejor.inliers / INLIERS_PUNTAJE_COMPLETO);
+  const coincide = mejorId !== null && puntaje >= UMBRAL && mejor.inliers >= VENTAJA_SOBRE_SEGUNDO * segundo;
+  return {
+    coincide,
+    autorId: coincide ? mejorId : null,
+    puntaje: Math.round(puntaje * 1000) / 1000,
+    umbral: UMBRAL,
+    esquinas: coincide ? mejor.esquinas : null
+  };
 }

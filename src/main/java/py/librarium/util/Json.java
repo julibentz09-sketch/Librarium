@@ -1,10 +1,11 @@
 package py.librarium.util;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.RecordComponent;
 import java.util.Collection;
 import java.util.Map;
 
-/** Convierte mapas, listas, records, textos y números a JSON. */
+/** Convierte mapas, listas, arreglos, records, textos y números a JSON. */
 public final class Json {
 
     private Json() {
@@ -27,6 +28,8 @@ public final class Json {
             escribirMapa(sb, mapa);
         } else if (valor instanceof Collection<?> lista) {
             escribirLista(sb, lista);
+        } else if (valor.getClass().isArray()) {
+            escribirArreglo(sb, valor);
         } else if (valor.getClass().isRecord()) {
             escribirRecord(sb, valor);
         } else {
@@ -58,6 +61,17 @@ public final class Json {
             }
             primero = false;
             escribir(sb, elemento);
+        }
+        sb.append(']');
+    }
+
+    private static void escribirArreglo(StringBuilder sb, Object arreglo) {
+        sb.append('[');
+        for (int i = 0; i < Array.getLength(arreglo); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            escribir(sb, Array.get(arreglo, i));
         }
         sb.append(']');
     }

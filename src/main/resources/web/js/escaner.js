@@ -5,7 +5,7 @@ import { detalleAutor, escapar } from './plantillas.js';
 
 const INTERVALO_MS = 120;
 const CUADROS_PARA_CONFIRMAR = 3;
-const LADO_RECORTE = 192;
+const LADO_RECORTE = 400;      // OpenCV necesita detalle para encontrar puntos clave
 const MARGEN_RECORTE = 1.5;      // se manda el marco con margen por si la foto es más grande
 const ESPERA_FICHA_MS = 1100;
 
@@ -26,6 +26,8 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
   const btnReintentar = $('#btn-reintentar');
   const ficha = $('#ra-hoja');
   const fichaCuerpo = $('#ra-hoja-cuerpo');
+  const contorno = $('#ra-contorno');
+  const poligono = contorno.querySelector('polygon');
 
   const lienzo = document.createElement('canvas');
   lienzo.width = lienzo.height = LADO_RECORTE;
@@ -117,8 +119,32 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
     }
   }
 
+  // Dibuja sobre el video el contorno de la ficha que encontró OpenCV (las esquinas vienen
+  // entre 0 y 1 dentro del recorte que se mandó a analizar). Es un <svg>: no tiene la propiedad
+  // .hidden de los elementos HTML, por eso se usa el atributo.
+  function dibujarContorno(esquinas, region) {
+    if (!esquinas) {
+      contorno.setAttribute('hidden', '');
+      return;
+    }
+    const esc = escenario.getBoundingClientRect();
+    const escala = Math.max(esc.width / video.videoWidth, esc.height / video.videoHeight);
+    const desplX = (esc.width - video.videoWidth * escala) / 2;
+    const desplY = (esc.height - video.videoHeight * escala) / 2;
+    const puntos = esquinas.map(([u, v]) => {
+      let x = desplX + (region.x + u * region.lado) * escala;
+      const y = desplY + (region.y + v * region.lado) * escala;
+      if (espejado) x = esc.width - x;
+      return `${Math.round(x)},${Math.round(y)}`;
+    });
+    contorno.setAttribute('viewBox', `0 0 ${Math.round(esc.width)} ${Math.round(esc.height)}`);
+    poligono.setAttribute('points', puntos.join(' '));
+    contorno.removeAttribute('hidden');
+  }
+
   function apagarCamara() {
     pararEscaneo();
+    contorno.setAttribute('hidden', '');
     camara.detener();
     video.srcObject = null;
     etiquetaCamara.hidden = true;
@@ -129,7 +155,10 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
     racha = { id: null, cantidad: 0 };
     marco.classList.remove('reconocido');
     escenario.classList.add('escaneando');
-    mostrarEstado('Colocá la foto del autor dentro del marco verde');
+    contorno.setAttribute('hidden', '');
+    mostrarEstado(api.reconocimientoListo()
+      ? 'Colocá la foto del autor dentro del marco verde'
+      : 'Cargando OpenCV para reconocer las fichas…');
     actualizarBoton();
     analizar(++ciclo);
   }
@@ -179,10 +208,11 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
     if (!escaneando || miCiclo !== ciclo) return;
     try {
       if (video.readyState >= 2 && video.videoWidth > 0) {
-        copiarRegion(regionDelMarco());
+        const region = regionDelMarco();
+        copiarRegion(region);
         const resultado = await api.reconocer(lienzo);
         if (!escaneando || miCiclo !== ciclo) return;
-        procesarResultado(resultado);
+        procesarResultado(resultado, region);
         if (!escaneando) return;
       }
     } catch (error) {
@@ -191,7 +221,8 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
     temporizador = setTimeout(() => analizar(miCiclo), INTERVALO_MS);
   }
 
-  function procesarResultado(resultado) {
+  function procesarResultado(resultado, region) {
+    dibujarContorno(resultado.esquinas, region);
     const progreso = Math.max(0, Math.min(1, (resultado.puntaje - 0.15) / (resultado.umbral - 0.15)));
     barra.style.width = `${Math.round(progreso * 100)}%`;
 

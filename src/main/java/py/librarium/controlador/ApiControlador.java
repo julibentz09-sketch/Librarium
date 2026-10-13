@@ -2,14 +2,11 @@ package py.librarium.controlador;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import javax.imageio.ImageIO;
 import py.librarium.dao.AutorDAO;
 import py.librarium.modelo.Autor;
 import py.librarium.servicio.ReconocedorImagen;
@@ -17,7 +14,7 @@ import py.librarium.servicio.ReconocedorImagen;
 /**
  * GET  /api/autores        lista de autores con sus obras
  * GET  /api/autores/{id}   un autor
- * POST /api/reconocer      recibe la imagen del marco de la cámara y dice qué autor es
+ * POST /api/reconocer      recibe la imagen del marco de la cámara y dice qué autor es (con OpenCV)
  * GET  /api/info           direcciones para abrir la app desde el celular
  */
 public class ApiControlador implements HttpHandler {
@@ -76,18 +73,18 @@ public class ApiControlador implements HttpHandler {
             Respuesta.json(ex, 413, Map.of("error", "Imagen demasiado grande"));
             return;
         }
-        BufferedImage imagen = ImageIO.read(new ByteArrayInputStream(cuerpo));
-        if (imagen == null) {
+        ReconocedorImagen.Resultado resultado = reconocedor.analizar(cuerpo);
+        if (resultado == null) {
             Respuesta.json(ex, 400, Map.of("error", "La imagen no es válida"));
             return;
         }
 
-        ReconocedorImagen.Resultado resultado = reconocedor.analizar(imagen);
         Map<String, Object> respuesta = new LinkedHashMap<>();
         respuesta.put("coincide", resultado.coincide());
         respuesta.put("autorId", resultado.coincide() ? resultado.autorId() : null);
         respuesta.put("puntaje", Math.round(resultado.puntaje() * 1000) / 1000.0);
         respuesta.put("umbral", ReconocedorImagen.UMBRAL);
+        respuesta.put("esquinas", resultado.esquinas());
         Respuesta.json(ex, 200, respuesta);
     }
 }

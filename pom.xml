@@ -23,6 +23,12 @@
       <artifactId>sqlite-jdbc</artifactId>
       <version>3.46.1.0</version>
     </dependency>
+    <!-- OpenCV para Java, con las librerías nativas de Windows, Linux y macOS incluidas -->
+    <dependency>
+      <groupId>org.openpnp</groupId>
+      <artifactId>opencv</artifactId>
+      <version>4.9.0-0</version>
+    </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-nop</artifactId>
@@ -79,6 +85,14 @@
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
                     <exclude>META-INF/MANIFEST.MF</exclude>
+                  </excludes>
+                </filter>
+                <!-- OpenCV trae librerías para todas las plataformas: se dejan solo las de 64 bits -->
+                <filter>
+                  <artifact>org.openpnp:opencv</artifact>
+                  <excludes>
+                    <exclude>nu/pattern/opencv/windows/x86_32/**</exclude>
+                    <exclude>nu/pattern/opencv/linux/ARMv7/**</exclude>
                   </excludes>
                 </filter>
               </filters>

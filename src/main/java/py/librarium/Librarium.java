@@ -44,7 +44,7 @@ public class Librarium {
 
             ReconocedorImagen reconocedor = new ReconocedorImagen();
             for (Marcador marcador : marcadorDAO.listar()) {
-                reconocedor.agregarReferencia(marcador.autorId(), Recursos.leerImagen(marcador.imagen()));
+                reconocedor.agregarReferencia(marcador.autorId(), Recursos.leerBytes(marcador.imagen()));
             }
 
             Servidor servidor = new Servidor(puertoHttp, puertoHttps);

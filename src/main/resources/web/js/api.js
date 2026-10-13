@@ -1,9 +1,11 @@
 import * as reconocedorLocal from './reconocedor.js';
 
 // Con el servidor Java los datos vienen de /api. En GitHub Pages no hay servidor:
-// se usan los JSON que genera ExportadorSitio y el reconocimiento se hace en el navegador.
+// se usan los JSON que genera ExportadorSitio y el reconocimiento se hace en el navegador
+// con OpenCV.js (ver reconocedor.js).
 let sinServidor = false;
 let referenciasListas = null;
+let referenciasCargadas = false;
 
 async function pedirJson(url, opciones) {
   const respuesta = await fetch(url, opciones);
@@ -29,6 +31,11 @@ export async function obtenerInfo() {
   return pedirJson('api/info');
 }
 
+/** false mientras se descarga OpenCV.js en GitHub Pages (la primera vez tarda unos segundos). */
+export function reconocimientoListo() {
+  return !sinServidor || referenciasCargadas;
+}
+
 export async function reconocer(lienzo) {
   if (sinServidor) {
     if (!referenciasListas) {
@@ -40,6 +47,7 @@ export async function reconocer(lienzo) {
         });
     }
     await referenciasListas;
+    referenciasCargadas = true;
     return reconocedorLocal.analizar(lienzo);
   }
   const imagen = await new Promise((listo) => lienzo.toBlob(listo, 'image/jpeg', 0.85));
