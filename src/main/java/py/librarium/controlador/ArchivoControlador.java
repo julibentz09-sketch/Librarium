@@ -7,20 +7,21 @@ import java.io.InputStream;
 import java.util.Map;
 import py.librarium.util.Recursos;
 
-/** Sirve la página web (HTML, CSS, JS e imágenes) que está en src/main/resources/web. */
+/** Sirve la página web (HTML, CSS, JS, imágenes y modelos 3D) que está en src/main/resources/web. */
 public class ArchivoControlador implements HttpHandler {
 
-    private static final Map<String, String> TIPOS = Map.of(
-            "html", "text/html; charset=utf-8",
-            "css", "text/css; charset=utf-8",
-            "js", "text/javascript; charset=utf-8",
-            "json", "application/json; charset=utf-8",
-            "svg", "image/svg+xml",
-            "png", "image/png",
-            "jpg", "image/jpeg",
-            "jpeg", "image/jpeg",
-            "webp", "image/webp",
-            "mp3", "audio/mpeg");
+    private static final Map<String, String> TIPOS = Map.ofEntries(
+            Map.entry("html", "text/html; charset=utf-8"),
+            Map.entry("css", "text/css; charset=utf-8"),
+            Map.entry("js", "text/javascript; charset=utf-8"),
+            Map.entry("json", "application/json; charset=utf-8"),
+            Map.entry("svg", "image/svg+xml"),
+            Map.entry("png", "image/png"),
+            Map.entry("jpg", "image/jpeg"),
+            Map.entry("jpeg", "image/jpeg"),
+            Map.entry("webp", "image/webp"),
+            Map.entry("mp3", "audio/mpeg"),
+            Map.entry("glb", "model/gltf-binary"));
 
     @Override
     public void handle(HttpExchange ex) throws IOException {

@@ -6,7 +6,8 @@ paraguayos a través de resúmenes de su vida y obra. Complementa las clases, no
 Tiene dos partes:
 
 - **Galería digital**: tarjetas con cada autor; al entrar se ve su foto, datos, biografía y obras principales (y se puede escuchar la biografía).
-- **Realidad aumentada**: se muestra a la cámara la ficha impresa con la foto del autor, la app la reconoce y abre su información.
+- **Realidad aumentada**: cada autor tiene una escultura 3D (pedestal, retrato enmarcado y libros) que se coloca en el espacio real con la cámara del celular, se puede rodear, acercar y agrandar.
+- **Escanear ficha**: se muestra a la cámara la ficha impresa con la foto del autor, la app la reconoce, abre su información y permite verlo en realidad aumentada.
 
 Autores: Augusto Roa Bastos, Delfina Acosta, Josefina Plá y Mauricio Cardozo Ocampo.
 
@@ -16,6 +17,7 @@ Autores: Augusto Roa Bastos, Delfina Acosta, Josefina Plá y Mauricio Cardozo Oc
 - SQLite con JDBC (`sqlite-jdbc`)
 - `HttpServer` del JDK para el servidor web y la API
 - ImageIO para el reconocimiento de las fichas
+- [`<model-viewer>`](https://modelviewer.dev) de Google para la realidad aumentada (WebXR y Scene Viewer en Android, AR Quick Look en iPhone)
 - HTML, CSS y JavaScript para la interfaz (responsive, funciona en celular y notebook)
 - JUnit 5 para las pruebas
 
@@ -87,7 +89,10 @@ src/main/java/py/librarium
 
 src/main/resources
 ├── db/                   schema.sql y datos.sql
-└── web/                  index.html, marcadores.html, css, js, img
+└── web/                  index.html, marcadores.html, css, js, img, modelos (.glb)
+
+herramientas/
+└── generar_modelos.py    crea las esculturas 3D a partir de las fotos
 ```
 
 ## Base de datos
@@ -148,9 +153,10 @@ coincide en 3 cuadros seguidos, se marca como reconocido y se abre su ficha.
 
 ## Agregar un autor
 
-1. Copiar la foto en `src/main/resources/web/img/`.
+1. Copiar la foto en `src/main/resources/web/img/` (en PNG).
 2. Agregar el autor, sus obras, su multimedia y su marcador en `src/main/resources/db/datos.sql`.
-3. Borrar `librarium.db` y volver a compilar con `mvnw package`.
+3. Generar su escultura 3D con `python herramientas/generar_modelos.py` (no necesita instalar nada).
+4. Borrar `librarium.db` y volver a compilar con `mvnw package`.
 
 ## Pruebas
 

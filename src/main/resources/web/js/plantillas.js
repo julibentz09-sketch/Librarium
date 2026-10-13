@@ -48,6 +48,7 @@ export function detalleAutor(autor) {
           ${autor.fallecimiento ? `<dt>Fallecimiento</dt><dd>${escapar(autor.fallecimiento)}</dd>` : ''}
         </dl>
         ${autor.destacado ? `<span class="insignia">${escapar(autor.destacado)}</span>` : ''}
+        <a href="#/ra/${encodeURIComponent(autor.id)}" class="boton boton-ra boton-chico boton-ver-ra">Ver en Realidad Aumentada</a>
       </div>
       <div class="detalle-info">
         <section>

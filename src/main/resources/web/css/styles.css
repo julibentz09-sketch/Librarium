@@ -290,10 +290,78 @@ body.modo-bienvenida main { display: flex; align-items: center; justify-content:
 .acciones { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
 .acciones .boton { min-width: 180px; }
 
-/* ===== 3. Realidad aumentada ===== */
-body.modo-ra { height: 100vh; height: 100dvh; overflow: hidden; }
-body.modo-ra main { display: flex; flex-direction: column; min-height: 0; padding-top: 16px; padding-bottom: 16px; }
-#vista-ra { flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+/* ===== 3. Realidad aumentada 3D ===== */
+.ra3d { display: flex; flex-direction: column; gap: 16px; }
+.ra3d-texto .titulo-seccion { margin-bottom: 6px; }
+.ra3d-texto p { margin: 0; max-width: 70ch; }
+.ra3d-autores {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.ra3d-autor {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  border: 2px solid var(--borde);
+  background: var(--gris-claro);
+  color: var(--azul-marino);
+  font: inherit;
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ra3d-autor img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; object-position: center 25%; }
+.ra3d-autor:hover { border-color: var(--esmeralda); }
+.ra3d-autor[aria-pressed="true"] { border-color: var(--esmeralda); background: var(--esmeralda-suave); color: var(--esmeralda-oscuro); }
+.ra3d-autor:focus-visible { outline: 3px solid var(--esmeralda); outline-offset: 2px; }
+.visor {
+  width: 100%;
+  height: min(62vh, 560px);
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 35%, #FFFFFF 0%, #E2E8F0 100%);
+  --poster-color: transparent;
+  --progress-bar-color: var(--esmeralda);
+}
+.visor-boton-ra {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, .35);
+}
+.visor-boton-ra:active { transform: translateX(-50%) scale(.97); }
+.visor-etiqueta {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, .88);
+  color: var(--blanco);
+  font-size: .85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ra3d-aviso {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--esmeralda-suave);
+  color: var(--esmeralda-oscuro);
+  font-size: .92rem;
+}
+.boton-ver-ra { display: flex; width: fit-content; margin: 14px auto 0; }
+
+/* ===== 4. Escanear ficha impresa ===== */
+body.modo-escaner { height: 100vh; height: 100dvh; overflow: hidden; }
+body.modo-escaner main { display: flex; flex-direction: column; min-height: 0; padding-top: 16px; padding-bottom: 16px; }
+#vista-escanear { flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 .ra-escenario {
   position: relative;
   flex: 1;
@@ -486,11 +554,11 @@ body.modo-ra main { display: flex; flex-direction: column; min-height: 0; paddin
 @media (max-width: 640px) {
   main { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
   .panel { padding: 16px; }
-  body.modo-ra main { padding: 0; }
-  body.modo-ra .encabezado { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px; }
-  body.modo-ra .marca p { display: none; }
-  body.modo-ra .marca h1 { font-size: 1.3rem; }
-  #vista-ra { gap: 0; }
+  body.modo-escaner main { padding: 0; }
+  body.modo-escaner .encabezado { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px; }
+  body.modo-escaner .marca p { display: none; }
+  body.modo-escaner .marca h1 { font-size: 1.3rem; }
+  #vista-escanear { gap: 0; }
   .ra-escenario { border-radius: 0; }
   .ra-controles { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--azul-marino); }
   .ra-controles .boton-primario { background: var(--blanco); color: var(--azul-marino); }
@@ -511,6 +579,7 @@ body.modo-ra main { display: flex; flex-direction: column; min-height: 0; paddin
   .opcion-icono svg { width: 32px; height: 32px; }
   .opcion-nombre { font-size: 1.2rem; align-self: end; }
   .opcion-desc { font-size: .88rem; align-self: start; }
+  .visor { height: 56vh; }
   .tarjeta-cuerpo { padding: 10px; }
   .tarjeta .boton { font-size: .85rem; }
 }
@@ -524,10 +593,10 @@ body.modo-ra main { display: flex; flex-direction: column; min-height: 0; paddin
   .encabezado { padding-top: 6px; padding-bottom: 6px; }
   .marca p { display: none; }
   .marca h1 { font-size: 1.2rem; }
-  body.modo-ra main { padding: 8px 16px; }
-  body.modo-ra #vista-ra { flex-direction: row; gap: 12px; }
-  body.modo-ra .ra-controles { flex-direction: column; justify-content: center; padding: 0; background: none; }
-  body.modo-ra .ra-controles .boton { flex: 0 0 auto; }
+  body.modo-escaner main { padding: 8px 16px; }
+  body.modo-escaner #vista-escanear { flex-direction: row; gap: 12px; }
+  body.modo-escaner .ra-controles { flex-direction: column; justify-content: center; padding: 0; background: none; }
+  body.modo-escaner .ra-controles .boton { flex: 0 0 auto; }
   .ra-capa { padding-bottom: 0; }
   .ra-estado-caja { bottom: 8px; padding: 6px 12px; }
 }

@@ -79,7 +79,7 @@ export function crearEscaner({ buscarAutor, infoServidor }) {
 
   function mensajeSinHttps() {
     const info = infoServidor();
-    const url = `https://${location.hostname}:${info.puertoHttps}/#/ra`;
+    const url = `https://${location.hostname}:${info.puertoHttps}/#/escanear`;
     if (!info.https) {
       return 'La cámara solo funciona en páginas seguras (HTTPS) o en <strong>localhost</strong>.';
     }

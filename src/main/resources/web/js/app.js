@@ -3,6 +3,7 @@ import { esMovil } from './camara.js';
 import * as voz from './voz.js';
 import { detalleAutor, tarjetaAutor } from './plantillas.js';
 import { crearEscaner } from './escaner.js';
+import { crearVisorRA } from './ra3d.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -11,6 +12,7 @@ let infoServidor = { urlsCelular: [], https: false, puertoHttps: 8443 };
 
 const buscarAutor = (id) => autores.find((a) => a.id === id);
 const escaner = crearEscaner({ buscarAutor, infoServidor: () => infoServidor });
+const visorRA = crearVisorRA(() => autores);
 
 const vistas = {
   bienvenida: $('#vista-bienvenida'),
@@ -18,6 +20,7 @@ const vistas = {
   galeria: $('#vista-galeria'),
   autor: $('#vista-autor'),
   ra: $('#vista-ra'),
+  escanear: $('#vista-escanear'),
   salir: $('#vista-salir')
 };
 
@@ -25,7 +28,7 @@ function mostrarVista(nombre, titulo = 'Librarium') {
   for (const [clave, vista] of Object.entries(vistas)) {
     vista.hidden = clave !== nombre;
   }
-  document.body.classList.toggle('modo-ra', nombre === 'ra');
+  document.body.classList.toggle('modo-escaner', nombre === 'escanear');
   document.body.classList.toggle('modo-bienvenida', nombre === 'bienvenida');
   document.title = titulo;
   window.scrollTo(0, 0);
@@ -34,7 +37,7 @@ function mostrarVista(nombre, titulo = 'Librarium') {
 function navegar() {
   const [, seccion = '', parametro = ''] = (location.hash || '#/').split('/');
   voz.detener();
-  if (seccion !== 'ra') escaner.salir();
+  if (seccion !== 'escanear') escaner.salir();
 
   const autor = seccion === 'autor' ? buscarAutor(decodeURIComponent(parametro)) : null;
   if (autor) {
@@ -45,7 +48,10 @@ function navegar() {
   } else if (seccion === 'galeria') {
     mostrarVista('galeria', 'Galería Digital · Librarium');
   } else if (seccion === 'ra') {
-    mostrarVista('ra', 'Cámara RA · Librarium');
+    mostrarVista('ra', 'Realidad Aumentada · Librarium');
+    visorRA.mostrar(decodeURIComponent(parametro));
+  } else if (seccion === 'escanear') {
+    mostrarVista('escanear', 'Escanear ficha · Librarium');
     escaner.entrar();
   } else if (seccion === 'salir') {
     mostrarVista('salir');
