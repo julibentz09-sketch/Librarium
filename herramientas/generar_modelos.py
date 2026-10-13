@@ -1,12 +1,19 @@
 """
 Genera los modelos 3D (.glb) que se ven en realidad aumentada, en tamaño real (metros):
-un pedestal de museo con el retrato enmarcado del autor, una placa con su nombre, una pila
-de libros y dos paneles a los costados con su biografía y sus obras principales.
+un pedestal de museo con el busto de bronce del autor (o su retrato enmarcado si todavía no
+tiene busto), una placa con su nombre, una pila de libros y dos paneles a los costados con su
+biografía y sus obras principales.
 
 Uso: python herramientas/generar_modelos.py
 Toma los datos de src/main/resources/db (schema.sql y datos.sql) y las fotos de
 src/main/resources/web/img, y guarda los modelos en src/main/resources/web/modelos.
 Necesita Pillow para escribir los textos: pip install pillow
+
+Los bustos están en herramientas/bustos/<autor>.glb. Se hicieron con la IA Hunyuan3D-2.1
+(https://huggingface.co/spaces/tencent/Hunyuan3D-2.1, "shape generation" a partir de la foto)
+y se simplificaron a unos 50 mil triángulos con:
+  npx @gltf-transform/cli weld crudo.glb soldado.glb
+  npx @gltf-transform/cli simplify soldado.glb <autor>.glb --ratio 0.12 --error 0.0008
 """
 import io
 import json
@@ -21,6 +28,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 CARPETA_DB = RAIZ / "src/main/resources/db"
 CARPETA_WEB = RAIZ / "src/main/resources/web"
 CARPETA_MODELOS = CARPETA_WEB / "modelos"
+CARPETA_BUSTOS = Path(__file__).resolve().parent / "bustos"
 
 ALTO_FOTO = 0.62
 BORDE_MARCO = 0.05
@@ -216,7 +224,46 @@ MATERIALES = {
     "tapa_roja": color("#9F1239", 0.6),
     "tapa_verde": color(ESMERALDA_OSCURO, 0.6),
     "tapa_azul": color("#1D4ED8", 0.6),
+    "bronce": color("#A0703F", 0.38, 0.9),
 }
+
+
+def leer_busto(ruta):
+    """Lee las posiciones y los triángulos del .glb de un busto (una sola malla, sin texturas)."""
+    datos = ruta.read_bytes()
+    largo_json = struct.unpack_from("<I", datos, 12)[0]
+    gltf = json.loads(datos[20:20 + largo_json])
+    binario = datos[28 + largo_json:]
+    primitiva = gltf["meshes"][0]["primitives"][0]
+
+    def leer(indice):
+        accesor = gltf["accessors"][indice]
+        vista = gltf["bufferViews"][accesor["bufferView"]]
+        inicio = vista.get("byteOffset", 0) + accesor.get("byteOffset", 0)
+        formato = {5126: "f", 5123: "H", 5125: "I"}[accesor["componentType"]]
+        partes = 3 if accesor["type"] == "VEC3" else 1
+        valores = struct.unpack_from(f"<{accesor['count'] * partes}{formato}", binario, inicio)
+        return [valores[i:i + 3] for i in range(0, len(valores), 3)] if partes == 3 else list(valores)
+
+    return leer(primitiva["attributes"]["POSITION"]), leer(primitiva["indices"])
+
+
+def normales_suaves(posiciones, indices):
+    normales = [[0.0, 0.0, 0.0] for _ in posiciones]
+    for i in range(0, len(indices), 3):
+        a, b, c = indices[i:i + 3]
+        pa, pb, pc = posiciones[a], posiciones[b], posiciones[c]
+        u = [pb[k] - pa[k] for k in range(3)]
+        v = [pc[k] - pa[k] for k in range(3)]
+        n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+        for vertice in (a, b, c):
+            for k in range(3):
+                normales[vertice][k] += n[k]
+    resultado = []
+    for n in normales:
+        largo = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2) or 1.0
+        resultado.append((n[0] / largo, n[1] / largo, n[2] / largo))
+    return resultado
 
 
 def tamano_png(datos):
@@ -251,8 +298,9 @@ class Modelo:
 
     def _accesor(self, valores, tipo, componentes, destino, con_limites=False):
         if tipo == "SCALAR":
-            datos = struct.pack(f"<{len(valores)}H", *valores)
-            accesor = {"componentType": 5123, "count": len(valores), "type": "SCALAR"}
+            grande = max(valores) > 65535
+            datos = struct.pack(f"<{len(valores)}{'I' if grande else 'H'}", *valores)
+            accesor = {"componentType": 5125 if grande else 5123, "count": len(valores), "type": "SCALAR"}
         else:
             planos = [v for vector in valores for v in vector]
             datos = struct.pack(f"<{len(planos)}f", *planos)
@@ -323,6 +371,11 @@ class Modelo:
         malla = self._malla(nombre, self.plano, self._material(nombre, material))
         self._nodo({"mesh": malla, "translation": list(centro), "scale": [ancho, alto, 1]}, padre)
 
+    def figura(self, nombre, material, posiciones, indices):
+        geometria = self._geometria(posiciones, normales_suaves(posiciones, indices), indices)
+        malla = self._malla(nombre, geometria, self._material(material, MATERIALES[material]))
+        self._nodo({"mesh": malla})
+
     def guardar(self, ruta):
         while len(self.binario) % 4:
             self.binario.append(0)
@@ -361,11 +414,31 @@ def atril(modelo, nombre, imagen, x, giro):
     modelo.imagen(nombre, a_jpeg(imagen), "image/jpeg", (0, centro_y, 0.0065), ancho, alto, grupo, brillo=0.3)
 
 
-def crear_escultura(autor):
-    modelo = Modelo()
-    png = (CARPETA_WEB / autor["foto"]).read_bytes()
+def busto(modelo, ruta, x):
+    """Coloca el busto parado sobre el pedestal, escalado para que entre en el espacio libre."""
+    posiciones, indices = leer_busto(ruta)
+    minimo = [min(p[k] for p in posiciones) for k in range(3)]
+    maximo = [max(p[k] for p in posiciones) for k in range(3)]
+    ancho, alto, fondo = (maximo[k] - minimo[k] for k in range(3))
+    escala = min(0.78 / alto, 0.72 / ancho, 0.45 / fondo)
+    centro_x, centro_z = (minimo[0] + maximo[0]) / 2, (minimo[2] + maximo[2]) / 2
+    colocadas = [((p[0] - centro_x) * escala + x, (p[1] - minimo[1]) * escala + 0.9, (p[2] - centro_z) * escala)
+                 for p in posiciones]
+    modelo.figura("busto", "bronce", colocadas, indices)
+
+
+def retrato(modelo, png, x):
     ancho_px, alto_px = tamano_png(png)
     ancho_foto = ALTO_FOTO * ancho_px / alto_px
+    ancho_marco, alto_marco = ancho_foto + 2 * BORDE_MARCO, ALTO_FOTO + 2 * BORDE_MARCO
+    centro_y = 0.9 + alto_marco / 2
+    modelo.caja("marco", (x, centro_y, 0), (ancho_marco, alto_marco, 0.05))
+    modelo.imagen("retrato", png, "image/png", (x, centro_y, 0.026), ancho_foto, ALTO_FOTO)
+
+
+def crear_escultura(autor):
+    modelo = Modelo()
+    nombre_archivo = Path(autor["foto"]).stem
 
     # pedestal con la placa del nombre
     modelo.caja("zocalo", (0, 0.03, 0), (1.16, 0.06, 0.52))
@@ -375,11 +448,12 @@ def crear_escultura(autor):
     modelo.imagen("placa_nombre", a_jpeg(textura_placa(autor["nombre"])), "image/jpeg",
                   (-0.15, 0.62, 0.2425), 0.54, 0.54 * 200 / 768, rugosidad=0.4, metalico=0.5, brillo=0.15)
 
-    # retrato enmarcado
-    ancho_marco, alto_marco = ancho_foto + 2 * BORDE_MARCO, ALTO_FOTO + 2 * BORDE_MARCO
-    centro_y = 0.9 + alto_marco / 2
-    modelo.caja("marco", (-0.15, centro_y, 0), (ancho_marco, alto_marco, 0.05))
-    modelo.imagen("retrato", png, "image/png", (-0.15, centro_y, 0.026), ancho_foto, ALTO_FOTO)
+    # el autor: busto 3D si existe, si no su retrato enmarcado
+    ruta_busto = CARPETA_BUSTOS / f"{nombre_archivo}.glb"
+    if ruta_busto.exists():
+        busto(modelo, ruta_busto, -0.15)
+    else:
+        retrato(modelo, (CARPETA_WEB / autor["foto"]).read_bytes(), -0.15)
 
     # pila de libros
     libro(modelo, (0.40, 0.9225, 0.02), 8, "tapa_roja")
@@ -397,7 +471,8 @@ def main():
     for autor in leer_autores():
         destino = CARPETA_MODELOS / f"{Path(autor['foto']).stem}.glb"
         crear_escultura(autor).guardar(destino)
-        print(f"{destino.relative_to(RAIZ)} ({destino.stat().st_size // 1024} KB)")
+        tiene_busto = (CARPETA_BUSTOS / destino.name).exists()
+        print(f"{destino.relative_to(RAIZ)} ({destino.stat().st_size // 1024} KB, {'busto' if tiene_busto else 'retrato'})")
 
 
 if __name__ == "__main__":
