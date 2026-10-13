@@ -102,13 +102,13 @@
       <div class="panel ra3d">
         <div class="ra3d-texto">
           <h2 class="titulo-seccion">Realidad Aumentada</h2>
-          <p>Elegí un autor y tocá <strong>Ver en tu espacio</strong>. Apuntá la cámara al piso y su escultura aparece en tu lugar: podés caminar alrededor, acercarte y cambiarle el tamaño.</p>
+          <p>Elegí un autor y tocá <strong>Ver en tu espacio</strong>. Apuntá la cámara al piso y aparece su escultura con dos paneles: su biografía y sus obras principales. Podés caminar alrededor, acercarte a leer y cambiarle el tamaño.</p>
         </div>
 
         <div id="ra3d-autores" class="ra3d-autores" aria-label="Autores"></div>
 
         <model-viewer id="visor-ra" class="visor" ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="auto"
-                      camera-controls auto-rotate touch-action="pan-y" camera-orbit="25deg 78deg auto"
+                      camera-controls touch-action="pan-y" camera-orbit="0deg 80deg auto"
                       shadow-intensity="1" environment-image="neutral" alt="Escultura 3D del autor">
           <div slot="hotspot-nombre" class="visor-etiqueta" data-position="-0.15 1.72 0" data-normal="0 0 1">
             <span id="ra3d-etiqueta"></span>

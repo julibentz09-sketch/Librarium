@@ -1,23 +1,200 @@
 """
-Genera los modelos 3D (.glb) que se ven en realidad aumentada: un pedestal de museo
-con el retrato enmarcado del autor y una pila de libros, en tamaño real (metros).
+Genera los modelos 3D (.glb) que se ven en realidad aumentada, en tamaño real (metros):
+un pedestal de museo con el retrato enmarcado del autor, una placa con su nombre, una pila
+de libros y dos paneles a los costados con su biografía y sus obras principales.
 
 Uso: python herramientas/generar_modelos.py
-Lee las fotos de src/main/resources/web/img y guarda los modelos en src/main/resources/web/modelos.
-No necesita librerías externas.
+Toma los datos de src/main/resources/db (schema.sql y datos.sql) y las fotos de
+src/main/resources/web/img, y guarda los modelos en src/main/resources/web/modelos.
+Necesita Pillow para escribir los textos: pip install pillow
 """
+import io
 import json
 import math
+import sqlite3
 import struct
 from pathlib import Path
 
+from PIL import Image, ImageDraw, ImageFont
+
 RAIZ = Path(__file__).resolve().parent.parent
-CARPETA_FOTOS = RAIZ / "src/main/resources/web/img"
-CARPETA_MODELOS = RAIZ / "src/main/resources/web/modelos"
+CARPETA_DB = RAIZ / "src/main/resources/db"
+CARPETA_WEB = RAIZ / "src/main/resources/web"
+CARPETA_MODELOS = CARPETA_WEB / "modelos"
 
 ALTO_FOTO = 0.62
 BORDE_MARCO = 0.05
 
+AZUL = "#1E293B"
+ESMERALDA = "#10B981"
+ESMERALDA_OSCURO = "#047857"
+ESMERALDA_SUAVE = "#D1FAE5"
+TEXTO = "#334155"
+APAGADO = "#64748B"
+PAPEL = "#FBF8F1"
+
+
+# ---------- datos ----------
+
+def leer_autores():
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    db.executescript((CARPETA_DB / "schema.sql").read_text(encoding="utf-8"))
+    db.executescript((CARPETA_DB / "datos.sql").read_text(encoding="utf-8"))
+    autores = [dict(fila) for fila in db.execute("SELECT * FROM autor ORDER BY orden")]
+    for autor in autores:
+        autor["obras"] = [dict(fila) for fila in db.execute(
+            "SELECT * FROM obra WHERE autor_id = ? ORDER BY orden", (autor["id"],))]
+    return autores
+
+
+# ---------- texturas con texto ----------
+
+FUENTES = {
+    "serif": ["georgia.ttf", "DejaVuSerif.ttf"],
+    "serif_negrita": ["georgiab.ttf", "DejaVuSerif-Bold.ttf"],
+    "serif_cursiva": ["georgiaz.ttf", "DejaVuSerif-BoldItalic.ttf"],
+    "sans": ["segoeui.ttf", "DejaVuSans.ttf"],
+    "sans_negrita": ["segoeuib.ttf", "DejaVuSans-Bold.ttf"],
+}
+CARPETAS_FUENTES = [Path("C:/Windows/Fonts"), Path("/usr/share/fonts/truetype/dejavu"),
+                    Path("/Library/Fonts"), Path.home() / "Library/Fonts"]
+
+
+def fuente(tipo, tamano):
+    for nombre in FUENTES[tipo]:
+        for carpeta in CARPETAS_FUENTES:
+            if (carpeta / nombre).exists():
+                return ImageFont.truetype(str(carpeta / nombre), round(tamano))
+    return ImageFont.load_default(round(tamano))
+
+
+def envolver(dibujo, texto, letra, ancho):
+    lineas, actual = [], ""
+    for palabra in texto.split():
+        prueba = f"{actual} {palabra}".strip()
+        if actual and dibujo.textlength(prueba, font=letra) > ancho:
+            lineas.append(actual)
+            actual = palabra
+        else:
+            actual = prueba
+    return lineas + [actual] if actual else lineas
+
+
+def a_jpeg(imagen):
+    salida = io.BytesIO()
+    imagen.convert("RGB").save(salida, "JPEG", quality=88)
+    return salida.getvalue()
+
+
+ANCHO_PANEL, ALTO_PANEL = 1024, 1400
+MARGEN = 70
+ALTO_CABECERA = 190
+
+
+def panel(seccion, nombre, bloques):
+    """Dibuja un panel de museo con la letra lo más grande posible para que se lea de lejos."""
+    escala = 1.4
+    while True:
+        imagen = Image.new("RGB", (ANCHO_PANEL, ALTO_PANEL), PAPEL)
+        dibujo = ImageDraw.Draw(imagen)
+        dibujo.rectangle((0, 0, ANCHO_PANEL, ALTO_CABECERA), fill=AZUL)
+        dibujo.rectangle((0, ALTO_CABECERA, ANCHO_PANEL, ALTO_CABECERA + 10), fill=ESMERALDA)
+        dibujo.text((MARGEN, 42), seccion.upper(), font=fuente("sans_negrita", 28), fill=ESMERALDA)
+        letra_nombre = fuente("serif_negrita", 58)
+        while dibujo.textlength(nombre, font=letra_nombre) > ANCHO_PANEL - 2 * MARGEN:
+            letra_nombre = fuente("serif_negrita", letra_nombre.size - 2)
+        dibujo.text((MARGEN, 88), nombre, font=letra_nombre, fill="white")
+
+        y = ALTO_CABECERA + 50
+        for bloque in bloques:
+            y = bloque(dibujo, y, escala)
+        if y <= ALTO_PANEL - 90 or escala < 0.6:
+            break
+        escala -= 0.04
+
+    pie = "Librarium · Literatura Paraguaya Interactiva"
+    letra_pie = fuente("sans", 22)
+    dibujo.text(((ANCHO_PANEL - dibujo.textlength(pie, font=letra_pie)) / 2, ALTO_PANEL - 52),
+                pie, font=letra_pie, fill=APAGADO)
+    return imagen
+
+
+def parrafo(texto, tipo, tamano, color, antes=0, interlineado=1.4):
+    def dibujar(dibujo, y, escala):
+        letra = fuente(tipo, tamano * escala)
+        y += antes * escala
+        for linea in envolver(dibujo, texto, letra, ANCHO_PANEL - 2 * MARGEN):
+            dibujo.text((MARGEN, y), linea, font=letra, fill=color)
+            y += letra.size * interlineado
+        return y
+    return dibujar
+
+
+def insignia(texto):
+    def dibujar(dibujo, y, escala):
+        letra = fuente("sans_negrita", 28 * escala)
+        ancho = dibujo.textlength(texto, font=letra)
+        alto = letra.size * 1.7
+        dibujo.rounded_rectangle((MARGEN, y, MARGEN + ancho + 44, y + alto), radius=alto / 2, fill=ESMERALDA_SUAVE)
+        dibujo.text((MARGEN + 22, y + alto / 2), texto, font=letra, fill=ESMERALDA_OSCURO, anchor="lm")
+        return y + alto + 10 * escala
+    return dibujar
+
+
+def separador(antes=26, despues=26):
+    def dibujar(dibujo, y, escala):
+        y += antes * escala
+        dibujo.line((MARGEN, y, ANCHO_PANEL - MARGEN, y), fill="#E2E8F0", width=3)
+        return y + despues * escala
+    return dibujar
+
+
+def panel_biografia(autor):
+    bloques = []
+    if autor["destacado"]:
+        bloques.append(insignia(autor["destacado"]))
+    bloques.append(parrafo("Nacimiento", "sans_negrita", 30, AZUL, antes=14))
+    bloques.append(parrafo(f"{autor['fecha_nacimiento']}, {autor['lugar_nacimiento']}", "sans", 30, TEXTO))
+    if autor["fallecimiento"]:
+        bloques.append(parrafo("Fallecimiento", "sans_negrita", 30, AZUL, antes=10))
+        bloques.append(parrafo(autor["fallecimiento"], "sans", 30, TEXTO))
+    bloques.append(separador())
+    bloques.append(parrafo(autor["biografia"], "sans", 35, TEXTO, interlineado=1.45))
+    return panel("Biografía", autor["nombre"], bloques)
+
+
+def panel_obras(autor):
+    bloques = []
+    for numero, obra in enumerate(autor["obras"]):
+        if numero:
+            bloques.append(separador(18, 24))
+        bloques.append(parrafo(obra["titulo"], "serif_cursiva", 42, AZUL))
+        datos = " · ".join(str(d) for d in (obra["genero"], obra["anio"]) if d)
+        if datos:
+            bloques.append(parrafo(datos, "sans_negrita", 27, ESMERALDA_OSCURO, antes=2))
+        if obra["descripcion"]:
+            bloques.append(parrafo(obra["descripcion"], "sans", 32, TEXTO, antes=8))
+    return panel("Obras principales", autor["nombre"], bloques)
+
+
+def textura_placa(nombre):
+    ancho, alto = 768, 200
+    imagen = Image.new("RGB", (ancho, alto))
+    dibujo = ImageDraw.Draw(imagen)
+    claro, oscuro = (0xE8, 0xCB, 0x6A), (0xB0, 0x87, 0x1C)
+    for y in range(alto):
+        t = y / (alto - 1)
+        dibujo.line((0, y, ancho, y), fill=tuple(round(claro[i] + (oscuro[i] - claro[i]) * t) for i in range(3)))
+    dibujo.rectangle((10, 10, ancho - 11, alto - 11), outline=(0x7A, 0x5A, 0x0E), width=4)
+    letra = fuente("serif_negrita", 76)
+    while dibujo.textlength(nombre, font=letra) > ancho - 80:
+        letra = fuente("serif_negrita", letra.size - 2)
+    dibujo.text((ancho / 2, alto / 2), nombre, font=letra, fill=(0x3B, 0x2A, 0x05), anchor="mm")
+    return imagen
+
+
+# ---------- glTF ----------
 
 def color(hexa, rugosidad=0.8, metalico=0.0):
     """Material PBR a partir de un color sRGB (#RRGGBB)."""
@@ -30,14 +207,14 @@ def color(hexa, rugosidad=0.8, metalico=0.0):
 
 
 MATERIALES = {
-    "pedestal": color("#1E293B", 0.7),
+    "pedestal": color(AZUL, 0.7),
     "zocalo": color("#0F172A", 0.7),
-    "esmeralda": color("#10B981", 0.5),
+    "esmeralda": color(ESMERALDA, 0.5),
     "placa": color("#C9A227", 0.35, 0.8),
     "marco": color("#6B4423", 0.6),
     "hojas": color("#F5F0E1", 0.9),
     "tapa_roja": color("#9F1239", 0.6),
-    "tapa_verde": color("#047857", 0.6),
+    "tapa_verde": color(ESMERALDA_OSCURO, 0.6),
     "tapa_azul": color("#1D4ED8", 0.6),
 }
 
@@ -54,10 +231,13 @@ class Modelo:
                      "scene": 0, "scenes": [{"nodes": [0]}],
                      "nodes": [{"name": "escultura", "children": []}],
                      "meshes": [], "materials": [], "accessors": [], "bufferViews": [],
-                     "buffers": [], "textures": [], "images": [], "samplers": []}
+                     "buffers": [], "textures": [], "images": [],
+                     "samplers": [{"magFilter": 9729, "minFilter": 9987, "wrapS": 33071, "wrapT": 33071}]}
         self.indice_material = {}
         self.indice_malla = {}
         self.cubo = self._geometria_cubo()
+        self.plano = self._geometria([(-0.5, -0.5, 0), (0.5, -0.5, 0), (0.5, 0.5, 0), (-0.5, 0.5, 0)],
+                                     [(0, 0, 1)] * 4, [0, 1, 2, 0, 2, 3], [(0, 1), (1, 1), (1, 0), (0, 0)])
 
     def _vista(self, datos, destino=None):
         while len(self.binario) % 4:
@@ -110,12 +290,11 @@ class Modelo:
             self.indice_material[nombre] = len(self.gltf["materials"]) - 1
         return self.indice_material[nombre]
 
-    def _malla_cubo(self, material):
-        if material not in self.indice_malla:
-            primitiva = {**self.cubo, "material": self._material(material, MATERIALES[material])}
-            self.gltf["meshes"].append({"name": material, "primitives": [primitiva]})
-            self.indice_malla[material] = len(self.gltf["meshes"]) - 1
-        return self.indice_malla[material]
+    def _malla(self, nombre, geometria, material):
+        if nombre not in self.indice_malla:
+            self.gltf["meshes"].append({"name": nombre, "primitives": [{**geometria, "material": material}]})
+            self.indice_malla[nombre] = len(self.gltf["meshes"]) - 1
+        return self.indice_malla[nombre]
 
     def _nodo(self, nodo, padre=0):
         self.gltf["nodes"].append(nodo)
@@ -124,24 +303,25 @@ class Modelo:
         return indice
 
     def caja(self, material, centro, tamano, padre=0):
-        self._nodo({"mesh": self._malla_cubo(material), "translation": list(centro), "scale": list(tamano)}, padre)
+        malla = self._malla(material, self.cubo, self._material(material, MATERIALES[material]))
+        self._nodo({"mesh": malla, "translation": list(centro), "scale": list(tamano)}, padre)
 
     def grupo(self, centro, giro_y=0.0):
         mitad = math.radians(giro_y) / 2
         return self._nodo({"translation": list(centro), "rotation": [0, math.sin(mitad), 0, math.cos(mitad)]})
 
-    def foto(self, png, centro, ancho, alto):
-        imagen = self._vista(png)
-        self.gltf["images"].append({"bufferView": imagen, "mimeType": "image/png"})
-        self.gltf["samplers"].append({"magFilter": 9729, "minFilter": 9987, "wrapS": 33071, "wrapT": 33071})
-        self.gltf["textures"].append({"source": 0, "sampler": 0})
-        material = self._material("retrato", {"pbrMetallicRoughness": {
-            "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 0.9}})
-        a, h = ancho / 2, alto / 2
-        geometria = self._geometria([(-a, -h, 0), (a, -h, 0), (a, h, 0), (-a, h, 0)], [(0, 0, 1)] * 4,
-                                    [0, 1, 2, 0, 2, 3], [(0, 1), (1, 1), (1, 0), (0, 0)])
-        self.gltf["meshes"].append({"name": "retrato", "primitives": [{**geometria, "material": material}]})
-        self._nodo({"mesh": len(self.gltf["meshes"]) - 1, "translation": list(centro)})
+    def imagen(self, nombre, datos, tipo, centro, ancho, alto, padre=0, rugosidad=0.9, metalico=0.0, brillo=0.0):
+        """Un plano con una imagen; con brillo > 0 se ve más claro aunque haya poca luz."""
+        self.gltf["images"].append({"bufferView": self._vista(datos), "mimeType": tipo})
+        self.gltf["textures"].append({"source": len(self.gltf["images"]) - 1, "sampler": 0})
+        textura = len(self.gltf["textures"]) - 1
+        material = {"pbrMetallicRoughness": {"baseColorTexture": {"index": textura},
+                                             "metallicFactor": metalico, "roughnessFactor": rugosidad}}
+        if brillo:
+            material["emissiveTexture"] = {"index": textura}
+            material["emissiveFactor"] = [brillo] * 3
+        malla = self._malla(nombre, self.plano, self._material(nombre, material))
+        self._nodo({"mesh": malla, "translation": list(centro), "scale": [ancho, alto, 1]}, padre)
 
     def guardar(self, ruta):
         while len(self.binario) % 4:
@@ -156,6 +336,8 @@ class Modelo:
             archivo.write(struct.pack("<II", len(self.binario), 0x004E4942) + self.binario)
 
 
+# ---------- escultura ----------
+
 def libro(modelo, centro, giro, tapa):
     grupo = modelo.grupo(centro, giro)
     ancho, grosor, largo = 0.22, 0.045, 0.30
@@ -165,35 +347,56 @@ def libro(modelo, centro, giro, tapa):
     modelo.caja("hojas", (0.004, 0, 0), (ancho - 0.016, grosor - 0.012, largo - 0.012), grupo)
 
 
-def crear_escultura(png):
+def atril(modelo, nombre, imagen, x, giro):
+    """Panel de museo parado sobre dos patas, girado hacia el frente de la escultura."""
+    grupo = modelo.grupo((x, 0, 0.12), giro)
+    ancho = 0.72
+    alto = ancho * ALTO_PANEL / ANCHO_PANEL
+    centro_y = 0.55 + alto / 2 + 0.03
+    for lado in (-1, 1):
+        modelo.caja("pedestal", (lado * 0.26, 0.29, -0.01), (0.04, 0.58, 0.04), grupo)
+        modelo.caja("zocalo", (lado * 0.26, 0.015, -0.01), (0.07, 0.03, 0.36), grupo)
+    modelo.caja("pedestal", (0, centro_y, -0.01), (ancho + 0.06, alto + 0.06, 0.03), grupo)
+    modelo.caja("esmeralda", (0, centro_y + alto / 2 + 0.04, -0.01), (ancho + 0.08, 0.025, 0.045), grupo)
+    modelo.imagen(nombre, a_jpeg(imagen), "image/jpeg", (0, centro_y, 0.0065), ancho, alto, grupo, brillo=0.3)
+
+
+def crear_escultura(autor):
     modelo = Modelo()
+    png = (CARPETA_WEB / autor["foto"]).read_bytes()
     ancho_px, alto_px = tamano_png(png)
     ancho_foto = ALTO_FOTO * ancho_px / alto_px
 
-    # pedestal
+    # pedestal con la placa del nombre
     modelo.caja("zocalo", (0, 0.03, 0), (1.16, 0.06, 0.52))
     modelo.caja("pedestal", (0, 0.455, 0), (1.1, 0.79, 0.46))
     modelo.caja("esmeralda", (0, 0.875, 0), (1.16, 0.05, 0.52))
-    modelo.caja("placa", (-0.15, 0.62, 0.235), (0.5, 0.13, 0.012))
+    modelo.caja("placa", (-0.15, 0.62, 0.236), (0.56, 0.155, 0.012))
+    modelo.imagen("placa_nombre", a_jpeg(textura_placa(autor["nombre"])), "image/jpeg",
+                  (-0.15, 0.62, 0.2425), 0.54, 0.54 * 200 / 768, rugosidad=0.4, metalico=0.5, brillo=0.15)
 
     # retrato enmarcado
     ancho_marco, alto_marco = ancho_foto + 2 * BORDE_MARCO, ALTO_FOTO + 2 * BORDE_MARCO
     centro_y = 0.9 + alto_marco / 2
     modelo.caja("marco", (-0.15, centro_y, 0), (ancho_marco, alto_marco, 0.05))
-    modelo.foto(png, (-0.15, centro_y, 0.026), ancho_foto, ALTO_FOTO)
+    modelo.imagen("retrato", png, "image/png", (-0.15, centro_y, 0.026), ancho_foto, ALTO_FOTO)
 
     # pila de libros
     libro(modelo, (0.40, 0.9225, 0.02), 8, "tapa_roja")
     libro(modelo, (0.40, 0.9675, 0.02), -6, "tapa_verde")
     libro(modelo, (0.39, 1.0125, 0.03), 14, "tapa_azul")
+
+    # paneles con la información
+    atril(modelo, "biografia", panel_biografia(autor), -1.08, 22)
+    atril(modelo, "obras", panel_obras(autor), 1.08, -22)
     return modelo
 
 
 def main():
     CARPETA_MODELOS.mkdir(parents=True, exist_ok=True)
-    for foto in sorted(CARPETA_FOTOS.glob("*.png")):
-        destino = CARPETA_MODELOS / f"{foto.stem}.glb"
-        crear_escultura(foto.read_bytes()).guardar(destino)
+    for autor in leer_autores():
+        destino = CARPETA_MODELOS / f"{Path(autor['foto']).stem}.glb"
+        crear_escultura(autor).guardar(destino)
         print(f"{destino.relative_to(RAIZ)} ({destino.stat().st_size // 1024} KB)")
 
 

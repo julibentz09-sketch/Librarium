@@ -6,7 +6,7 @@ paraguayos a través de resúmenes de su vida y obra. Complementa las clases, no
 Tiene dos partes:
 
 - **Galería digital**: tarjetas con cada autor; al entrar se ve su foto, datos, biografía y obras principales (y se puede escuchar la biografía).
-- **Realidad aumentada**: cada autor tiene una escultura 3D (pedestal, retrato enmarcado y libros) que se coloca en el espacio real con la cámara del celular, se puede rodear, acercar y agrandar.
+- **Realidad aumentada**: cada autor tiene una escultura 3D (pedestal con su nombre, retrato enmarcado, libros y dos paneles con su biografía y sus obras principales) que se coloca en el espacio real con la cámara del celular; se puede rodear, acercar para leer y agrandar.
 - **Escanear ficha**: se muestra a la cámara la ficha impresa con la foto del autor, la app la reconoce, abre su información y permite verlo en realidad aumentada.
 
 Autores: Augusto Roa Bastos, Delfina Acosta, Josefina Plá y Mauricio Cardozo Ocampo.
@@ -92,7 +92,7 @@ src/main/resources
 └── web/                  index.html, marcadores.html, css, js, img, modelos (.glb)
 
 herramientas/
-└── generar_modelos.py    crea las esculturas 3D a partir de las fotos
+└── generar_modelos.py    crea las esculturas 3D a partir de las fotos y los datos
 ```
 
 ## Base de datos
@@ -155,7 +155,7 @@ coincide en 3 cuadros seguidos, se marca como reconocido y se abre su ficha.
 
 1. Copiar la foto en `src/main/resources/web/img/` (en PNG).
 2. Agregar el autor, sus obras, su multimedia y su marcador en `src/main/resources/db/datos.sql`.
-3. Generar su escultura 3D con `python herramientas/generar_modelos.py` (no necesita instalar nada).
+3. Generar su escultura 3D con `python herramientas/generar_modelos.py` (necesita Pillow: `pip install pillow`).
 4. Borrar `librarium.db` y volver a compilar con `mvnw package`.
 
 ## Pruebas
